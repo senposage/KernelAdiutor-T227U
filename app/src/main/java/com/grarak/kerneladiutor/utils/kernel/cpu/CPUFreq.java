@@ -413,6 +413,14 @@ public class CPUFreq {
     }
 
     public void setMinFreq(int freq, int min, int max, Context context) {
+        if (T227UDVFS.hasMinimumControl() && T227UDVFS.isLittleCpu(min)) {
+            int maxFreq = getMaxFreq(min, false);
+            if (maxFreq != 0 && freq > maxFreq) {
+                setMaxFreq(freq, min, max, context);
+            }
+            T227UDVFS.setMinimumFrequency(freq, context);
+            return;
+        }
         if (SuezDVFS.supported()) {
             int maxFreq = getMaxFreq(min, false);
             if (maxFreq != 0 && freq > maxFreq) {
@@ -443,6 +451,9 @@ public class CPUFreq {
     }
 
     public int getMinFreq(int cpu, boolean forceRead) {
+        if (T227UDVFS.hasMinimumControl() && T227UDVFS.isLittleCpu(cpu)) {
+            return T227UDVFS.getMinimumFrequency();
+        }
         if (SuezDVFS.supported()) {
             return SuezDVFS.getMinFreq(cpu);
         }

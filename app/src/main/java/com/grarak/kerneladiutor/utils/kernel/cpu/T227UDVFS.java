@@ -23,6 +23,7 @@ public final class T227UDVFS {
     private static final String DIRECTORY = "/proc/cpufreq/MT_CPU_DVFS_LL/";
     private static final String OPP_INDEX = DIRECTORY + "cpufreq_oppidx";
     private static final String OC_MAX_FREQ = DIRECTORY + "cpufreq_oc_max_freq";
+    private static final String OC_MIN_FREQ = DIRECTORY + "cpufreq_oc_min_freq";
     private static final String OC_OPP_VOLTAGE = DIRECTORY + "cpufreq_oc_opp_voltage";
     private static final String VOLTAGE = DIRECTORY + "cpufreq_volt";
     private static final Pattern OPP_FREQUENCY = Pattern.compile("\\(\\s*(\\d+)\\s*,");
@@ -105,6 +106,26 @@ public final class T227UDVFS {
 
     public static int getMaximumFrequency() {
         return Utils.strToInt(Utils.readFile(OC_MAX_FREQ));
+    }
+
+    /** The vendor LL scaling_min_freq attribute is read-only, so the kernel
+     * exposes a PPM-aware floor endpoint alongside the OC ceiling. */
+    public static boolean hasMinimumControl() {
+        return supported() && Utils.existFile(OC_MIN_FREQ)
+                && getMinimumFrequency() > 0;
+    }
+
+    public static boolean isLittleCpu(int cpu) {
+        return cpu >= 4 && cpu <= 7;
+    }
+
+    public static int getMinimumFrequency() {
+        return Utils.strToInt(Utils.readFile(OC_MIN_FREQ));
+    }
+
+    public static void setMinimumFrequency(int frequency, Context context) {
+        Control.runSetting(Control.write(String.valueOf(frequency), OC_MIN_FREQ),
+                ApplyOnBootFragment.CPU, OC_MIN_FREQ, context);
     }
 
     /** A ceiling only. PPM thermal and power restrictions remain authoritative. */
