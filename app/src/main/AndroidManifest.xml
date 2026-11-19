@@ -29,7 +29,9 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.Default.Pink">
-        <activity android:name=".activities.StartActivity">
+        <activity
+            android:name=".activities.StartActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -44,6 +46,7 @@
         <activity
             android:name=".activities.StartActivityMaterial"
             android:enabled="false"
+            android:exported="true"
             android:icon="@mipmap/ic_launcher_material">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -91,7 +94,9 @@
         <receiver android:name=".services.monitor.Monitor$DisableReceiver" />
 
         <!-- Profile Widget -->
-        <receiver android:name=".services.profile.Widget">
+        <receiver
+            android:name=".services.profile.Widget"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -106,7 +111,9 @@
             android:permission="android.permission.BIND_REMOTEVIEWS" />
 
         <!-- CM SDK -->
-        <receiver android:name=".services.profile.Tile">
+        <receiver
+            android:name=".services.profile.Tile"
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.grarak.kerneladiutor.action.ACTION_TOGGLE_STATE" />
             </intent-filter>
@@ -116,6 +123,7 @@
         <service
             android:name=".services.DashClock"
             android:icon="@drawable/ic_launcher_preview"
+            android:exported="true"
             android:permission="com.google.android.apps.dashclock.permission.READ_EXTENSION_DATA">
             <intent-filter>
                 <action android:name="com.google.android.apps.dashclock.Extension" />
@@ -127,13 +135,17 @@
         </service>
 
         <!-- Tasker -->
-        <activity android:name=".activities.tools.profile.ProfileTaskerActivity">
+        <activity
+            android:name=".activities.tools.profile.ProfileTaskerActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
         </activity>
 
-        <receiver android:name=".services.profile.Tasker">
+        <receiver
+            android:name=".services.profile.Tasker"
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.FIRE_SETTING" />
             </intent-filter>
