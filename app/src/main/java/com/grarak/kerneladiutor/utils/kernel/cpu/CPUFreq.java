@@ -683,6 +683,14 @@ public class CPUFreq {
 
     public boolean isBigLITTLE() {
         if (mBigCpu == -1 || mLITTLECpu == -1) {
+            // MT6765 exposes two cpufreq policies despite the generic mt6*
+            // guard below.  policy0 is CPUs 0-3 (L/performance) and policy4
+            // is CPUs 4-7 (LL); do not route this through the Suez layout.
+            if (T227UDVFS.supported()) {
+                mBigCpu = 0;
+                mLITTLECpu = 4;
+                return true;
+            }
             if (SuezDVFS.supported()) {
                 mBigCpu = 2;
                 mLITTLECpu = 0;

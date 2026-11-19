@@ -33,6 +33,7 @@ import com.grarak.kerneladiutor.views.recyclerview.RecyclerViewItem;
 import com.grarak.kerneladiutor.views.recyclerview.SeekBarView;
 import com.grarak.kerneladiutor.views.recyclerview.SwitchView;
 import com.grarak.kerneladiutor.views.recyclerview.TitleView;
+import com.grarak.kerneladiutor.views.recyclerview.SelectView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -92,7 +93,7 @@ public class VMFragment extends RecyclerViewFragment {
         zram.setTitle(getString(R.string.disksize));
         zram.setSummary(getString(R.string.disksize_summary));
         zram.setUnit(getString(R.string.mb));
-        zram.setMax(2048);
+        zram.setMax(8192);
         zram.setOffset(10);
         zram.setProgress(ZRAM.getDisksize() / 10);
         zram.setOnSeekBarListener(new SeekBarView.OnSeekBarListener() {
@@ -107,6 +108,52 @@ public class VMFragment extends RecyclerViewFragment {
         });
 
         items.add(zram);
+
+        if (ZRAM.hasCompressionAlgorithm()) {
+            SelectView algorithm = new SelectView();
+            algorithm.setTitle("Compression algorithm");
+            algorithm.setSummary("Changing this recreates zram swap using the current size.");
+            algorithm.setItems(ZRAM.getCompressionAlgorithms());
+            String current = ZRAM.getCompressionAlgorithm();
+            if (!current.isEmpty()) algorithm.setItem(current);
+            algorithm.setOnItemSelected((selectView, position, item) ->
+                    ZRAM.setCompressionAlgorithm(item, getActivity()));
+            items.add(algorithm);
+        }
+
+        if (ZRAM.hasMaxCompStreams()) {
+            GenericSelectView streams = new GenericSelectView();
+            streams.setSummary("Maximum compression streams");
+            streams.setValue(String.valueOf(ZRAM.getMaxCompStreams()));
+            streams.setValueRaw(streams.getValue());
+            streams.setInputType(InputType.TYPE_CLASS_NUMBER);
+            streams.setOnGenericValueListener((view, value) -> {
+                ZRAM.setMaxCompStreams(Integer.parseInt(value), getActivity());
+                view.setValue(value);
+            });
+            items.add(streams);
+        }
+
+        if (ZRAM.hasWritebackLimit()) {
+            SwitchView writeback = new SwitchView();
+            writeback.setTitle("ZRAM writeback limit");
+            writeback.setSummary("Requires a configured zram backing device.");
+            writeback.setChecked(ZRAM.isWritebackLimitEnabled());
+            writeback.addOnSwitchListener((switchView, isChecked) ->
+                    ZRAM.setWritebackLimitEnabled(isChecked, getActivity()));
+            items.add(writeback);
+
+            GenericSelectView pages = new GenericSelectView();
+            pages.setSummary("Writeback budget (4 KiB pages; 0 is unlimited)");
+            pages.setValue(String.valueOf(ZRAM.getWritebackLimitPages()));
+            pages.setValueRaw(pages.getValue());
+            pages.setInputType(InputType.TYPE_CLASS_NUMBER);
+            pages.setOnGenericValueListener((view, value) -> {
+                ZRAM.setWritebackLimitPages(Integer.parseInt(value), getActivity());
+                view.setValue(value);
+            });
+            items.add(pages);
+        }
     }
 
     private void zswapInit(List<RecyclerViewItem> items) {

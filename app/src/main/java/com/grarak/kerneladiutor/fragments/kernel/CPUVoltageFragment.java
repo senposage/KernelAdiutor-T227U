@@ -167,7 +167,8 @@ public class CPUVoltageFragment extends RecyclerViewFragment {
         liveRails.setTitle("Live rail readback");
         liveRails.setSummary("VPROC " + rails.getVprocMillivolts()
                 + getString(R.string.mv) + " · VSRAM " + rails.getVsramMillivolts()
-                + getString(R.string.mv));
+                + getString(R.string.mv)
+                + "\nVPROC is shared with the L/performance cluster; the highest active CPU OPP controls the rail.");
         card.addItem(liveRails);
 
         DescriptionView reset = new DescriptionView();

@@ -129,13 +129,17 @@ public class GPUFragment extends RecyclerViewFragment {
 
         DescriptionView rail = new DescriptionView();
         rail.setTitle("Live VCORE readback");
-        rail.setSummary("VCORE " + T227UGPU.getLiveVcoreMillivolts()
-                + getString(R.string.mv) + " · regulator readback, not an OPP-table value.");
+        int liveVcore = T227UGPU.getLiveVcoreMillivolts();
+        rail.setSummary(liveVcore > 0
+                ? "VCORE " + liveVcore + getString(R.string.mv)
+                + " · regulator readback, not an OPP-table value."
+                : "GPU rail is power-gated; live VCORE is available while the GPU is active.");
         card.addItem(rail);
 
         mT227MaximumFrequency = new SelectView();
         mT227MaximumFrequency.setTitle("OC ceiling");
-        mT227MaximumFrequency.setSummary("Dynamic ceiling; MTK GPU DVFS and thermal protections remain enabled.");
+        mT227MaximumFrequency.setSummary("Dynamic ceiling; MTK GPU DVFS and thermal protections remain enabled. "
+                + "750 MHz is experimental.");
         mT227Frequencies = T227UGPU.getFrequencies();
         List<String> entries = new ArrayList<>();
         for (int frequency : mT227Frequencies) {
@@ -209,7 +213,7 @@ public class GPUFragment extends RecyclerViewFragment {
         if (requestedMillivolts != voltage.getStockMillivolts()) {
             summary += " · requested " + requestedMillivolts + getString(R.string.mv);
         }
-        return summary + " · verify VCORE above; MTK maps requests to discrete rail states";
+        return summary + " · all values above 700 mV request the same top hardware VCORE OPP";
     }
 
     private void suezGpuInit(List<RecyclerViewItem> items) {

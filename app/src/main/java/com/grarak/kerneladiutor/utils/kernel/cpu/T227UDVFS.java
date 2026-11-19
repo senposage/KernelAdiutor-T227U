@@ -21,8 +21,11 @@ import java.util.regex.Pattern;
 public final class T227UDVFS {
 
     private static final String DIRECTORY = "/proc/cpufreq/MT_CPU_DVFS_LL/";
+    private static final String PERFORMANCE_DIRECTORY = "/proc/cpufreq/MT_CPU_DVFS_L/";
     private static final String OPP_INDEX = DIRECTORY + "cpufreq_oppidx";
     private static final String OC_MAX_FREQ = DIRECTORY + "cpufreq_oc_max_freq";
+    private static final String PERFORMANCE_OPP_INDEX = PERFORMANCE_DIRECTORY + "cpufreq_oppidx";
+    private static final String PERFORMANCE_OC_MAX_FREQ = PERFORMANCE_DIRECTORY + "cpufreq_oc_max_freq";
     private static final String OC_MIN_FREQ = DIRECTORY + "cpufreq_oc_min_freq";
     private static final String OC_OPP_VOLTAGE = DIRECTORY + "cpufreq_oc_opp_voltage";
     private static final String VOLTAGE = DIRECTORY + "cpufreq_volt";
@@ -89,8 +92,31 @@ public final class T227UDVFS {
     }
 
     public static List<Integer> getFrequencies() {
+        return getFrequencies(OPP_INDEX);
+    }
+
+    public static boolean hasPerformanceOcControl() {
+        return Utils.existFile(PERFORMANCE_OPP_INDEX) && Utils.existFile(PERFORMANCE_OC_MAX_FREQ)
+                && getPerformanceMaximumFrequency() > 0
+                && getPerformanceFrequencies().size() > 16;
+    }
+
+    public static List<Integer> getPerformanceFrequencies() {
+        return getFrequencies(PERFORMANCE_OPP_INDEX);
+    }
+
+    public static int getPerformanceMaximumFrequency() {
+        return Utils.strToInt(Utils.readFile(PERFORMANCE_OC_MAX_FREQ));
+    }
+
+    public static void setPerformanceMaximumFrequency(int frequency, Context context) {
+        Control.runSetting(Control.write(String.valueOf(frequency), PERFORMANCE_OC_MAX_FREQ),
+                ApplyOnBootFragment.CPU, PERFORMANCE_OC_MAX_FREQ, context);
+    }
+
+    private static List<Integer> getFrequencies(String path) {
         List<Integer> frequencies = new ArrayList<>();
-        String table = Utils.readFile(OPP_INDEX);
+        String table = Utils.readFile(path);
         if (table == null) return frequencies;
 
         Matcher matcher = OPP_FREQUENCY.matcher(table);

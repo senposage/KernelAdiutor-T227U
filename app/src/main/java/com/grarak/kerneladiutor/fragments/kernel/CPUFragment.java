@@ -103,6 +103,9 @@ public class CPUFragment extends RecyclerViewFragment {
         if (T227UDVFS.supported()) {
             t227uOcInit(items);
         }
+        if (T227UDVFS.hasPerformanceOcControl()) {
+            t227uPerformanceOcInit(items);
+        }
         freqInit(items);
         if (Misc.hasMcPowerSaving()) {
             Log.crashlyticsI(TAG, "mcPowerSavingInit");
@@ -145,12 +148,14 @@ public class CPUFragment extends RecyclerViewFragment {
         liveRails.setTitle("Live rail readback");
         liveRails.setSummary("VPROC " + rails.getVprocMillivolts()
                 + getString(R.string.mv) + " · VSRAM " + rails.getVsramMillivolts()
-                + getString(R.string.mv));
+                + getString(R.string.mv)
+                + "\nVPROC is shared with the L/performance cluster.");
         card.addItem(liveRails);
 
         SelectView maximum = new SelectView();
         maximum.setTitle("OC ceiling");
-        maximum.setSummary("Governor remains active; PPM thermal and power limits override this ceiling.");
+        maximum.setSummary("Governor remains active; PPM thermal and power limits override this ceiling. "
+                + "LL and L share VPROC.");
         List<String> entries = new ArrayList<>();
         for (int frequency : frequencies) {
             entries.add((frequency / 1000) + getString(R.string.mhz));
@@ -162,6 +167,41 @@ public class CPUFragment extends RecyclerViewFragment {
         }
         maximum.setOnItemSelected((selectView, position, item) ->
                 T227UDVFS.setMaximumFrequency(frequencies.get(position), getActivity()));
+        card.addItem(maximum);
+
+        items.add(card);
+    }
+
+    private void t227uPerformanceOcInit(List<RecyclerViewItem> items) {
+        List<Integer> frequencies = T227UDVFS.getPerformanceFrequencies();
+        if (frequencies.isEmpty()) return;
+
+        CardView card = new CardView();
+        card.setTitle("MT6765 performance CPU overclock");
+
+        T227UDVFS.RailReadback rails = T227UDVFS.getRailReadback();
+        DescriptionView liveRails = new DescriptionView();
+        liveRails.setTitle("Shared live rail readback");
+        liveRails.setSummary("VPROC " + rails.getVprocMillivolts()
+                + getString(R.string.mv) + " · VSRAM " + rails.getVsramMillivolts()
+                + getString(R.string.mv)
+                + "\nVPROC is shared with the LL cluster.");
+        card.addItem(liveRails);
+
+        SelectView maximum = new SelectView();
+        maximum.setTitle("Performance OC ceiling");
+        maximum.setSummary("Stock is 2501 MHz. PPM thermal and power limits override this ceiling.");
+        List<String> entries = new ArrayList<>();
+        for (int frequency : frequencies) {
+            entries.add((frequency / 1000) + getString(R.string.mhz));
+        }
+        maximum.setItems(entries);
+        int current = T227UDVFS.getPerformanceMaximumFrequency();
+        if (current > 0) {
+            maximum.setItem((current / 1000) + getString(R.string.mhz));
+        }
+        maximum.setOnItemSelected((selectView, position, item) ->
+                T227UDVFS.setPerformanceMaximumFrequency(frequencies.get(position), getActivity()));
         card.addItem(maximum);
 
         items.add(card);
