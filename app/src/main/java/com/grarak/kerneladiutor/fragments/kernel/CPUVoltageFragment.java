@@ -34,6 +34,7 @@ import com.grarak.kerneladiutor.fragments.BaseFragment;
 import com.grarak.kerneladiutor.fragments.recyclerview.RecyclerViewFragment;
 import com.grarak.kerneladiutor.utils.Utils;
 import com.grarak.kerneladiutor.utils.kernel.cpu.SuezDVFS;
+import com.grarak.kerneladiutor.utils.kernel.cpu.T227UDVFS;
 import com.grarak.kerneladiutor.utils.kernel.cpuvoltage.Voltage;
 import com.grarak.kerneladiutor.views.recyclerview.CardView;
 import com.grarak.kerneladiutor.views.recyclerview.DescriptionView;
@@ -54,9 +55,11 @@ public class CPUVoltageFragment extends RecyclerViewFragment {
 
     private Voltage mVoltage;
     private boolean mSuezVoltage;
+    private boolean mT227Voltage;
 
     private List<GenericSelectView> mVoltages = new ArrayList<>();
     private List<SuezVoltageView> mSuezVoltageViews = new ArrayList<>();
+    private List<T227VoltageView> mT227VoltageViews = new ArrayList<>();
 
     private static class SuezVoltageView {
         private final SelectView mView;
@@ -68,9 +71,19 @@ public class CPUVoltageFragment extends RecyclerViewFragment {
         }
     }
 
+    private static class T227VoltageView {
+        private final SelectView mView;
+        private final T227UDVFS.OppVoltage mVoltage;
+
+        private T227VoltageView(SelectView view, T227UDVFS.OppVoltage voltage) {
+            mView = view;
+            mVoltage = voltage;
+        }
+    }
+
     @Override
     public int getSpanCount() {
-        if (SuezDVFS.hasOppVoltageControl()) {
+        if (SuezDVFS.hasOppVoltageControl() || T227UDVFS.hasOppVoltageControl()) {
             /* Keep LITTLE and big OPP cards in their own fixed columns. */
             return 2;
         }
@@ -83,6 +96,7 @@ public class CPUVoltageFragment extends RecyclerViewFragment {
 
         mVoltage = Voltage.getInstance();
         mSuezVoltage = SuezDVFS.hasOppVoltageControl();
+        mT227Voltage = T227UDVFS.hasOppVoltageControl();
         addViewPagerFragment(ApplyOnBootFragment.newInstance(this));
         if (!mSuezVoltage) {
             addViewPagerFragment(GlobalOffsetFragment.newInstance(this));
@@ -93,6 +107,7 @@ public class CPUVoltageFragment extends RecyclerViewFragment {
     protected void addItems(List<RecyclerViewItem> items) {
         mVoltages.clear();
         mSuezVoltageViews.clear();
+        mT227VoltageViews.clear();
 
         if (mSuezVoltage) {
             DescriptionView reset = new DescriptionView();
@@ -111,6 +126,11 @@ public class CPUVoltageFragment extends RecyclerViewFragment {
             addSuezLiveRailReadback(items);
             addSuezVoltageItems(items, 0, "LITTLE");
             addSuezVoltageItems(items, 2, "big");
+            return;
+        }
+
+        if (mT227Voltage) {
+            addT227VoltageItems(items);
             return;
         }
 
@@ -136,6 +156,64 @@ public class CPUVoltageFragment extends RecyclerViewFragment {
             }
         }
         items.addAll(mVoltages);
+    }
+
+    private void addT227VoltageItems(List<RecyclerViewItem> items) {
+        CardView card = new CardView();
+        card.setTitle("C65 CPU OC-bin voltage");
+
+        T227UDVFS.RailReadback rails = T227UDVFS.getRailReadback();
+        DescriptionView liveRails = new DescriptionView();
+        liveRails.setTitle("Live rail readback");
+        liveRails.setSummary("VPROC " + rails.getVprocMillivolts()
+                + getString(R.string.mv) + " · VSRAM " + rails.getVsramMillivolts()
+                + getString(R.string.mv));
+        card.addItem(liveRails);
+
+        DescriptionView reset = new DescriptionView();
+        reset.setTitle("Restore OC-bin stock voltages");
+        reset.setSummary("Restores all five CPU OC requests to the safe kernel default.");
+        reset.setOnItemClickListener(item -> {
+            for (T227UDVFS.OppVoltage voltage : T227UDVFS.getOppVoltages()) {
+                T227UDVFS.resetOppVoltage(voltage, getActivity());
+            }
+            resetVisibleT227VoltageViews();
+        });
+        card.addItem(reset);
+
+        List<T227UDVFS.OppVoltage> voltages = T227UDVFS.getOppVoltages();
+        Collections.sort(voltages, (left, right) -> right.getFrequency() - left.getFrequency());
+        for (final T227UDVFS.OppVoltage voltage : voltages) {
+            SelectView view = new SelectView();
+            view.setTitle((voltage.getFrequency() / 1000) + getString(R.string.mhz));
+            view.setSummary(t227VoltageSummary(voltage, voltage.getAssignedMillivolts()));
+            view.setItems(T227UDVFS.getVoltageChoices(voltage));
+            view.setItem(String.valueOf(voltage.getAssignedMillivolts()));
+            view.setOnItemSelected((selectView, position, item) -> {
+                int millivolts = Utils.strToInt(item);
+                selectView.setSummary(t227VoltageSummary(voltage, millivolts));
+                T227UDVFS.setOppVoltage(voltage, millivolts, getActivity());
+            });
+            mT227VoltageViews.add(new T227VoltageView(view, voltage));
+            card.addItem(view);
+        }
+        items.add(card);
+    }
+
+    private void resetVisibleT227VoltageViews() {
+        for (T227VoltageView voltageView : mT227VoltageViews) {
+            int stock = voltageView.mVoltage.getStockMillivolts();
+            voltageView.mView.setItem(String.valueOf(stock));
+            voltageView.mView.setSummary(t227VoltageSummary(voltageView.mVoltage, stock));
+        }
+    }
+
+    private String t227VoltageSummary(T227UDVFS.OppVoltage voltage, int requestedMillivolts) {
+        String summary = "Stock " + voltage.getStockMillivolts() + getString(R.string.mv);
+        if (requestedMillivolts != voltage.getStockMillivolts()) {
+            summary += " · requested " + requestedMillivolts + getString(R.string.mv);
+        }
+        return summary + " · inactive OPPs apply on their next transition";
     }
 
     private void addSuezVoltageItems(List<RecyclerViewItem> items, final int cpu,

@@ -90,6 +90,7 @@ import com.grarak.kerneladiutor.utils.WebpageReader;
 import com.grarak.kerneladiutor.utils.kernel.battery.Battery;
 import com.grarak.kerneladiutor.utils.kernel.cpuhotplug.Hotplug;
 import com.grarak.kerneladiutor.utils.kernel.cpu.SuezDVFS;
+import com.grarak.kerneladiutor.utils.kernel.cpu.T227UDVFS;
 import com.grarak.kerneladiutor.utils.kernel.cpuvoltage.Voltage;
 import com.grarak.kerneladiutor.utils.kernel.entropy.Entropy;
 import com.grarak.kerneladiutor.utils.kernel.gpu.GPU;
@@ -189,7 +190,8 @@ public class NavigationActivity extends BaseActivity
         }
         mFragments.add(new NavigationActivity.NavigationFragment(R.string.kernel));
         mFragments.add(new NavigationActivity.NavigationFragment(R.string.cpu, CPUFragment.class, R.drawable.ic_cpu));
-        if (Voltage.getInstance().supported() || SuezDVFS.hasOppVoltageControl()) {
+        if (Voltage.getInstance().supported() || SuezDVFS.hasOppVoltageControl()
+                || T227UDVFS.hasOppVoltageControl()) {
             mFragments.add(new NavigationActivity.NavigationFragment(R.string.cpu_voltage, CPUVoltageFragment.class, R.drawable.ic_bolt));
         }
         if (Hotplug.supported()) {

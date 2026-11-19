@@ -61,6 +61,7 @@ public class GPUFragment extends RecyclerViewFragment {
     private int mT227MaximumFrequencyValue;
     private List<Integer> mT227Frequencies;
     private final List<SuezVoltageView> mSuezVoltageViews = new ArrayList<>();
+    private final List<T227VoltageView> mT227VoltageViews = new ArrayList<>();
 
     private PathReaderFragment mGPUGovernorTunableFragment;
 
@@ -69,6 +70,16 @@ public class GPUFragment extends RecyclerViewFragment {
         private final SuezGPU.OppVoltage mVoltage;
 
         private SuezVoltageView(SelectView view, SuezGPU.OppVoltage voltage) {
+            mView = view;
+            mVoltage = voltage;
+        }
+    }
+
+    private static class T227VoltageView {
+        private final SelectView mView;
+        private final T227UGPU.OppVoltage mVoltage;
+
+        private T227VoltageView(SelectView view, T227UGPU.OppVoltage voltage) {
             mView = view;
             mVoltage = voltage;
         }
@@ -108,6 +119,7 @@ public class GPUFragment extends RecyclerViewFragment {
     }
 
     private void t227GpuInit(List<RecyclerViewItem> items) {
+        mT227VoltageViews.clear();
         CardView card = new CardView();
         card.setTitle(getString(R.string.gpu));
 
@@ -139,6 +151,65 @@ public class GPUFragment extends RecyclerViewFragment {
         card.addItem(mT227MaximumFrequency);
 
         items.add(card);
+        t227GpuVoltageInit(items);
+    }
+
+    private void t227GpuVoltageInit(List<RecyclerViewItem> items) {
+        if (!T227UGPU.hasOppVoltageControl()) return;
+
+        CardView card = new CardView();
+        card.setTitle("GPU OC-bin voltage");
+
+        DescriptionView rail = new DescriptionView();
+        rail.setTitle("Live VCORE readback");
+        rail.setSummary("VCORE " + T227UGPU.getLiveVcoreMillivolts()
+                + getString(R.string.mv) + " · physical regulator value.");
+        card.addItem(rail);
+
+        DescriptionView reset = new DescriptionView();
+        reset.setTitle("Restore OC-bin stock voltages");
+        reset.setSummary("Restores all three GPU OC requests to their kernel defaults.");
+        reset.setOnItemClickListener(item -> {
+            for (T227UGPU.OppVoltage voltage : T227UGPU.getOppVoltages()) {
+                T227UGPU.resetOppVoltage(voltage, getActivity());
+            }
+            resetVisibleT227VoltageViews();
+        });
+        card.addItem(reset);
+
+        List<T227UGPU.OppVoltage> voltages = T227UGPU.getOppVoltages();
+        Collections.sort(voltages, (left, right) -> right.getFrequency() - left.getFrequency());
+        for (final T227UGPU.OppVoltage voltage : voltages) {
+            SelectView view = new SelectView();
+            view.setTitle((voltage.getFrequency() / 1000) + getString(R.string.mhz));
+            view.setSummary(t227VoltageSummary(voltage, voltage.getAssignedMillivolts()));
+            view.setItems(T227UGPU.getVoltageChoices(voltage));
+            view.setItem(String.valueOf(voltage.getAssignedMillivolts()));
+            view.setOnItemSelected((selectView, position, item) -> {
+                int millivolts = Utils.strToInt(item);
+                selectView.setSummary(t227VoltageSummary(voltage, millivolts));
+                T227UGPU.setOppVoltage(voltage, millivolts, getActivity());
+            });
+            mT227VoltageViews.add(new T227VoltageView(view, voltage));
+            card.addItem(view);
+        }
+        items.add(card);
+    }
+
+    private void resetVisibleT227VoltageViews() {
+        for (T227VoltageView voltageView : mT227VoltageViews) {
+            int stock = voltageView.mVoltage.getStockMillivolts();
+            voltageView.mView.setItem(String.valueOf(stock));
+            voltageView.mView.setSummary(t227VoltageSummary(voltageView.mVoltage, stock));
+        }
+    }
+
+    private String t227VoltageSummary(T227UGPU.OppVoltage voltage, int requestedMillivolts) {
+        String summary = "Stock " + voltage.getStockMillivolts() + getString(R.string.mv);
+        if (requestedMillivolts != voltage.getStockMillivolts()) {
+            summary += " · requested " + requestedMillivolts + getString(R.string.mv);
+        }
+        return summary + " · verify VCORE above; MTK maps requests to discrete rail states";
     }
 
     private void suezGpuInit(List<RecyclerViewItem> items) {
