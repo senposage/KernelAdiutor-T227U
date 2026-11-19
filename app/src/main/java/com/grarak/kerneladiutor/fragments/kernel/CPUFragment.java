@@ -34,6 +34,7 @@ import com.grarak.kerneladiutor.utils.kernel.cpu.CPUBoost;
 import com.grarak.kerneladiutor.utils.kernel.cpu.CPUFreq;
 import com.grarak.kerneladiutor.utils.kernel.cpu.Misc;
 import com.grarak.kerneladiutor.utils.kernel.cpu.SuezDVFS;
+import com.grarak.kerneladiutor.utils.kernel.cpu.T227UDVFS;
 import com.grarak.kerneladiutor.views.dialog.Dialog;
 import com.grarak.kerneladiutor.views.recyclerview.CardView;
 import com.grarak.kerneladiutor.views.recyclerview.DescriptionView;
@@ -99,6 +100,9 @@ public class CPUFragment extends RecyclerViewFragment {
     @Override
     protected void addItems(List<RecyclerViewItem> items) {
         Log.crashlyticsI(TAG, "freqInit");
+        if (T227UDVFS.supported()) {
+            t227uOcInit(items);
+        }
         freqInit(items);
         if (Misc.hasMcPowerSaving()) {
             Log.crashlyticsI(TAG, "mcPowerSavingInit");
@@ -124,6 +128,43 @@ public class CPUFragment extends RecyclerViewFragment {
             Log.crashlyticsI(TAG, "cpuTouchBoostInit");
             cpuTouchBoostInit(items);
         }
+    }
+
+    /** The stock cpufreq selectors remain useful governor bounds. This card
+     * controls the kernel's separate OC eligibility ceiling, which continues
+     * to be bounded by PPM thermal and power policy. */
+    private void t227uOcInit(List<RecyclerViewItem> items) {
+        List<Integer> frequencies = T227UDVFS.getFrequencies();
+        if (frequencies.isEmpty()) return;
+
+        CardView card = new CardView();
+        card.setTitle("MT6765 CPU overclock");
+
+        T227UDVFS.RailReadback rails = T227UDVFS.getRailReadback();
+        DescriptionView liveRails = new DescriptionView();
+        liveRails.setTitle("Live rail readback");
+        liveRails.setSummary("VPROC " + rails.getVprocMillivolts()
+                + getString(R.string.mv) + " · VSRAM " + rails.getVsramMillivolts()
+                + getString(R.string.mv));
+        card.addItem(liveRails);
+
+        SelectView maximum = new SelectView();
+        maximum.setTitle("OC ceiling");
+        maximum.setSummary("Governor remains active; PPM thermal and power limits override this ceiling.");
+        List<String> entries = new ArrayList<>();
+        for (int frequency : frequencies) {
+            entries.add((frequency / 1000) + getString(R.string.mhz));
+        }
+        maximum.setItems(entries);
+        int current = T227UDVFS.getMaximumFrequency();
+        if (current > 0) {
+            maximum.setItem((current / 1000) + getString(R.string.mhz));
+        }
+        maximum.setOnItemSelected((selectView, position, item) ->
+                T227UDVFS.setMaximumFrequency(frequencies.get(position), getActivity()));
+        card.addItem(maximum);
+
+        items.add(card);
     }
 
     private void freqInit(List<RecyclerViewItem> items) {

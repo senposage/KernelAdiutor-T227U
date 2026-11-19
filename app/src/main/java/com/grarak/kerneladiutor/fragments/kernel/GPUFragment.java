@@ -28,6 +28,7 @@ import com.grarak.kerneladiutor.utils.kernel.gpu.AdrenoIdler;
 import com.grarak.kerneladiutor.utils.kernel.gpu.GPUFreq;
 import com.grarak.kerneladiutor.utils.kernel.gpu.SimpleGPU;
 import com.grarak.kerneladiutor.utils.kernel.gpu.SuezGPU;
+import com.grarak.kerneladiutor.utils.kernel.gpu.T227UGPU;
 import com.grarak.kerneladiutor.views.recyclerview.CardView;
 import com.grarak.kerneladiutor.views.recyclerview.DescriptionView;
 import com.grarak.kerneladiutor.views.recyclerview.RecyclerViewItem;
@@ -55,6 +56,10 @@ public class GPUFragment extends RecyclerViewFragment {
     private int mSuezCurrentFrequency;
     private int mSuezMaximumFrequencyValue;
     private List<Integer> mSuezFrequencies;
+    private SelectView mT227MaximumFrequency;
+    private int mT227CurrentFrequency;
+    private int mT227MaximumFrequencyValue;
+    private List<Integer> mT227Frequencies;
     private final List<SuezVoltageView> mSuezVoltageViews = new ArrayList<>();
 
     private PathReaderFragment mGPUGovernorTunableFragment;
@@ -84,6 +89,10 @@ public class GPUFragment extends RecyclerViewFragment {
 
     @Override
     protected void addItems(List<RecyclerViewItem> items) {
+        if (T227UGPU.supported()) {
+            t227GpuInit(items);
+            return;
+        }
         if (SuezGPU.supported()) {
             suezGpuInit(items);
             return;
@@ -96,6 +105,40 @@ public class GPUFragment extends RecyclerViewFragment {
         if (AdrenoIdler.supported()) {
             adrenoIdlerInit(items);
         }
+    }
+
+    private void t227GpuInit(List<RecyclerViewItem> items) {
+        CardView card = new CardView();
+        card.setTitle(getString(R.string.gpu));
+
+        mCurFreq = new XYGraphView();
+        mCurFreq.setTitle(getString(R.string.gpu_freq));
+        card.addItem(mCurFreq);
+
+        DescriptionView rail = new DescriptionView();
+        rail.setTitle("Live VCORE readback");
+        rail.setSummary("VCORE " + T227UGPU.getLiveVcoreMillivolts()
+                + getString(R.string.mv) + " · regulator readback, not an OPP-table value.");
+        card.addItem(rail);
+
+        mT227MaximumFrequency = new SelectView();
+        mT227MaximumFrequency.setTitle("OC ceiling");
+        mT227MaximumFrequency.setSummary("Dynamic ceiling; MTK GPU DVFS and thermal protections remain enabled.");
+        mT227Frequencies = T227UGPU.getFrequencies();
+        List<String> entries = new ArrayList<>();
+        for (int frequency : mT227Frequencies) {
+            entries.add((frequency / 1000) + getString(R.string.mhz));
+        }
+        mT227MaximumFrequency.setItems(entries);
+        int maximum = T227UGPU.getMaximumFrequency();
+        if (maximum > 0) {
+            mT227MaximumFrequency.setItem((maximum / 1000) + getString(R.string.mhz));
+        }
+        mT227MaximumFrequency.setOnItemSelected((selectView, position, item) ->
+                T227UGPU.setMaximumFrequency(mT227Frequencies.get(position), getActivity()));
+        card.addItem(mT227MaximumFrequency);
+
+        items.add(card);
     }
 
     private void suezGpuInit(List<RecyclerViewItem> items) {
@@ -448,6 +491,12 @@ public class GPUFragment extends RecyclerViewFragment {
     protected void refreshThread() {
         super.refreshThread();
 
+        if (T227UGPU.supported()) {
+            mT227CurrentFrequency = T227UGPU.getCurrentFrequency();
+            mT227MaximumFrequencyValue = T227UGPU.getMaximumFrequency();
+            mT227Frequencies = T227UGPU.getFrequencies();
+            return;
+        }
         if (SuezGPU.supported()) {
             mSuezCurrentFrequency = SuezGPU.getCurrentFrequency();
             mSuezMaximumFrequencyValue = SuezGPU.getMaximumFrequency();
@@ -472,6 +521,20 @@ public class GPUFragment extends RecyclerViewFragment {
     protected void refresh() {
         super.refresh();
 
+        if (T227UGPU.supported()) {
+            if (mCurFreq != null && mT227CurrentFrequency > 0 && mT227Frequencies != null
+                    && !mT227Frequencies.isEmpty()) {
+                int maximum = mT227Frequencies.get(mT227Frequencies.size() - 1);
+                mCurFreq.setText((mT227CurrentFrequency / 1000) + getString(R.string.mhz));
+                mCurFreq.addPercentage(Math.round(Math.min(100f,
+                        (float) mT227CurrentFrequency / maximum * 100f)));
+            }
+            if (mT227MaximumFrequency != null && mT227MaximumFrequencyValue > 0) {
+                mT227MaximumFrequency.setItem((mT227MaximumFrequencyValue / 1000)
+                        + getString(R.string.mhz));
+            }
+            return;
+        }
         if (SuezGPU.supported()) {
             if (mCurFreq != null && mSuezCurrentFrequency > 0 && mSuezFrequencies != null
                     && !mSuezFrequencies.isEmpty()) {
