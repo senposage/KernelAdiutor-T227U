@@ -28,6 +28,7 @@ import com.grarak.kerneladiutor.utils.kernel.vm.VM;
 import com.grarak.kerneladiutor.utils.kernel.vm.ZRAM;
 import com.grarak.kerneladiutor.utils.kernel.vm.ZSwap;
 import com.grarak.kerneladiutor.views.recyclerview.CardView;
+import com.grarak.kerneladiutor.views.recyclerview.DescriptionView;
 import com.grarak.kerneladiutor.views.recyclerview.GenericSelectView;
 import com.grarak.kerneladiutor.views.recyclerview.RecyclerViewItem;
 import com.grarak.kerneladiutor.views.recyclerview.SeekBarView;
@@ -88,6 +89,16 @@ public class VMFragment extends RecyclerViewFragment {
         TitleView zramTitle = new TitleView();
         zramTitle.setText(getString(R.string.zram));
         items.add(zramTitle);
+
+        if (ZRAM.isSwapActive()) {
+            DescriptionView activeZram = new DescriptionView();
+            activeZram.setTitle("ZRAM is active");
+            activeZram.setSummary("Live resize, compression, and stream changes are disabled "
+                    + "because they require swapoff and can stall the device. Configure them "
+                    + "only while zram swap is inactive.");
+            items.add(activeZram);
+            return;
+        }
 
         SeekBarView zram = new SeekBarView();
         zram.setTitle(getString(R.string.disksize));

@@ -65,6 +65,17 @@ public class ZRAM {
         return Utils.strToInt(Utils.readFile(DISKSIZE)) / 1024 / 1024;
     }
 
+    /**
+     * Recreating zram requires swapoff.  On a live Android system that can
+     * block indefinitely while the VM tries to reclaim swapped pages, which
+     * in turn holds KA's serialized root command queue.  Only permit those
+     * destructive controls while zram is not an active swap device.
+     */
+    public static boolean isSwapActive() {
+        String swaps = Utils.readFile("/proc/swaps");
+        return swaps != null && swaps.contains("zram0");
+    }
+
     public static boolean hasCompressionAlgorithm() {
         return Utils.existFile(COMP_ALGORITHM);
     }
